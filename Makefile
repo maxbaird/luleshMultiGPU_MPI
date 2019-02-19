@@ -1,6 +1,6 @@
 PROJECT = lulesh.out
 NVCC		= /cm/shared/apps/cuda90/toolkit/9.0.176/bin/nvcc
-FLAGS		= -arch=sm_35
+FLAGS		= -arch=sm_35 
 DFLAGS	= -G -g -lineinfo
 RFLAGS 	= -O3 -DNDEBUG 
 
@@ -10,11 +10,13 @@ MPI_LIBS := /cm/shared/apps/mvapich2/gcc/64/2.3b/lib #/usr/lib/openmpi/lib
 #SILO_INCLUDES := /usr/local/silo-4.8/include
 #SILO_LIBS := /usr/local/silo-4.8/lib
 
-LINKFLAGS =  -L$(MPI_LIBS) -lmpi 
+LINKFLAGS =  -L$(MPI_LIBS) -lmpi -L${FTI_HOME}/lib -lfti 
 #LINKFLAGS += -L$(SILO_LIBS) -lsilo
 
 INC_MPI:= -I$(MPI_INCLUDES)
 #INC_SILO:= -I$(SILO_INCLUDES)
+
+INC_FTI := -I${FTI_HOME}/include
 
 all: release 
 
@@ -33,7 +35,7 @@ allocator.o: allocator.cu vector.h
 	$(NVCC) $(FLAGS) allocator.cu -I ./ $(INC_MPI) -c -o allocator.o
 
 lulesh.o: lulesh.cu util.h vector.h texture_objAPI.h allocator.h
-	$(NVCC) $(FLAGS) lulesh.cu -I ./ $(INC_MPI) $(INC_SILO) -c -o lulesh.o
+	$(NVCC) $(FLAGS) lulesh.cu -I ./ $(INC_MPI) $(INC_FTI) $(INC_SILO) -c -o lulesh.o
 
 clean: 
 	rm -rf allocator.o  lulesh.o $(PROJECT)
