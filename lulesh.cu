@@ -517,6 +517,9 @@ Domain *NewDomain(Index_t myRank, Index_t nx, Int_t totalRank)
   domain->numElem = domain->sizeX*domain->sizeY*domain->sizeZ ;
   domain->padded_numElem = PAD(domain->numElem,32);
 
+  fprintf(stdout, "Num elements: %d\n, totalRank: %d\n domain->sizeX=%d\ndomain->sizeY=%d\ndomain->sizeZ=%d\n", domain->numElem, totalRank, domain->sizeX, domain->sizeY, domain->sizeZ);
+  fflush(stdout);
+
   domain->planeLoc = myRank ;
   domain->numNode = (domain->sizeX+1)*(domain->sizeY+1)*(domain->sizeZ+1) ;
   domain->padded_numNode = PAD(domain->numNode,32);
