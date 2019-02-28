@@ -76,6 +76,7 @@ Additional BSD Notice
 #include <allocator.h>
 #include <texture_objAPI.h>
 #include <fti.h>
+#include <unistd.h>
 
 #define LULESH_SHOW_PROGRESS 0
 #define DOUBLE_PRECISION
@@ -2232,8 +2233,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       if (hourg_gt_zero)
       {
         //avg execution time 26ms or 0.026 Seconds
-        fprintf(stderr, "%d: About to launch kernel 42\n", GLOBAL_RANK);
-        fflush(stderr);
+        fprintf(stdout, "%d: About to launch kernel 42\n", GLOBAL_RANK);
+        fflush(stdout);
         FTI_Protect_Kernel(42, 0.001, (CalcVolumeForceForElems_kernel_FTI<true>),dimGrid,block_size,0,domain->streams[1],
          domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
@@ -2690,6 +2691,7 @@ static inline void CalcForceForNodes(Domain *domain)
            domain->sizeX + 1, domain->sizeY + 1, domain->sizeZ +  1,
            true, false) ;
   CommSBN(domain, 3, fieldData) ;
+
 
 }
 
@@ -3263,6 +3265,8 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
            align_offset,
            num_threads  
         );
+  fprintf(stdout, "%d Done calling kernel %s\n", GLOBAL_RANK, "CalcKinematicsAndMonotonicQGradient");
+  fflush(stdout);
       }
 
       if (planeMax)
@@ -3894,14 +3898,16 @@ void ApplyMaterialPropertiesAndUpdateVolume(Domain *domain)
 static inline
 void LagrangeElements(Domain *domain)
 {
-
   int allElem = domain->numElem +  /* local elem */
                 2*domain->sizeX*domain->sizeY ; /* plane ghosts */
 
+  fprintf(stdout, "%d Inside %s numElem: %d\n", GLOBAL_RANK, __func__, domain->numElem);
+  fflush(stdout);
   domain->vnew = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
   domain->dxx  = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
   domain->dyy  = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
   domain->dzz  = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
+
 
   domain->delx_xi    = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
   domain->delx_eta   = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
@@ -3917,6 +3923,9 @@ void LagrangeElements(Domain *domain)
   /*********************************************/
   /*  Calc Kinematics and Monotic Q Gradient   */
   /*********************************************/
+        fprintf(stdout, "%d About to call %s\n", GLOBAL_RANK,"CalcKinematicsAndMonotonicQGradient");
+        fflush(stdout);
+        //exit(EXIT_FAILURE);
   CalcKinematicsAndMonotonicQGradient(domain);
 
   Allocator<Vector_d<Real_t> >::free(domain->dxx,domain->numElem);
@@ -4395,13 +4404,17 @@ int main(int argc, char *argv[])
    MPI_Comm_rank(MPI_COMM_WORLD, &myRank) ;
 
    MPI_Comm SUB_COMM;
+   MPI_Comm DUP_COMM;
+
+   MPI_Comm_dup(MPI_COMM_WORLD, &DUP_COMM);
+
    int colour = 0;
 
    if(myRank != 0){
      colour = 42;
    }
 
-   MPI_Comm_split(MPI_COMM_WORLD, colour, myRank, &SUB_COMM);
+   MPI_Comm_split(DUP_COMM, colour, myRank, &SUB_COMM);
 
    if(myRank != 0){
     FTI_Init(fti_config_path, SUB_COMM);
@@ -4505,6 +4518,7 @@ int main(int argc, char *argv[])
     used_mem= total_mem - free_mem;
     printf("   Used Memory         =  %8.4f Mb\n", used_mem / (1024.*1024.) );
   }
+  
 
   bool write_solution_flag=true;
   if (write_solution_flag) {
