@@ -4402,9 +4402,9 @@ int main(int argc, char *argv[])
    MPI_Comm_rank(MPI_COMM_WORLD, &myRank) ;
 
    MPI_Comm SUB_COMM;
-   MPI_Comm DUP_COMM;
+   //MPI_Comm DUP_COMM;
 
-   MPI_Comm_dup(MPI_COMM_WORLD, &DUP_COMM);
+   //MPI_Comm_dup(MPI_COMM_WORLD, &DUP_COMM);
 
    int colour = 0;
 
@@ -4412,7 +4412,7 @@ int main(int argc, char *argv[])
      colour = 42;
    }
 
-   MPI_Comm_split(DUP_COMM, colour, myRank, &SUB_COMM);
+   MPI_Comm_split(MPI_COMM_WORLD, colour, myRank, &SUB_COMM);
 
    if(myRank != 0){
     FTI_Init(fti_config_path, SUB_COMM);
