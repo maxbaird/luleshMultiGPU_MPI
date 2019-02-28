@@ -2236,8 +2236,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       if (hourg_gt_zero)
       {
         //avg execution time 26ms or 0.026 Seconds
-        fprintf(stdout, "%d: About to launch kernel 42\n", GLOBAL_RANK);
-        fflush(stdout);
+        //fprintf(stdout, "%d: About to launch kernel 42\n", GLOBAL_RANK);
+        //fflush(stdout);
         FTI_Protect_Kernel(42, 0.001, (CalcVolumeForceForElems_kernel_FTI<true>),dimGrid,block_size,0,domain->streams[1],
          domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
@@ -3268,8 +3268,6 @@ void CalcKinematicsAndMonotonicQGradient(Domain *domain)
            align_offset,
            num_threads  
         );
-  fprintf(stdout, "%d Done calling kernel %s\n", GLOBAL_RANK, "CalcKinematicsAndMonotonicQGradient");
-  fflush(stdout);
       }
 
       if (planeMax)
@@ -3904,8 +3902,8 @@ void LagrangeElements(Domain *domain)
   int allElem = domain->numElem +  /* local elem */
                 2*domain->sizeX*domain->sizeY ; /* plane ghosts */
 
-  fprintf(stdout, "%d Inside %s numElem: %d\n", GLOBAL_RANK, __func__, domain->numElem);
-  fflush(stdout);
+  //fprintf(stdout, "%d Inside %s numElem: %d\n", GLOBAL_RANK, __func__, domain->numElem);
+  //fflush(stdout);
   domain->vnew = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
   domain->dxx  = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
   domain->dyy  = Allocator< Vector_d<Real_t> >::allocate(domain->numElem);
@@ -3926,9 +3924,6 @@ void LagrangeElements(Domain *domain)
   /*********************************************/
   /*  Calc Kinematics and Monotic Q Gradient   */
   /*********************************************/
-        fprintf(stdout, "%d About to call %s\n", GLOBAL_RANK,"CalcKinematicsAndMonotonicQGradient");
-        fflush(stdout);
-        //exit(EXIT_FAILURE);
   CalcKinematicsAndMonotonicQGradient(domain);
 
   Allocator<Vector_d<Real_t> >::free(domain->dxx,domain->numElem);
