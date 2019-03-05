@@ -83,6 +83,7 @@ Additional BSD Notice
 //#define SAMI 
 
 int GLOBAL_RANK;
+int GLBL_COMM_BUFFSIZE;
 
 enum { 
   VolumeError = -1, 
@@ -607,6 +608,8 @@ Domain *NewDomain(Index_t myRank, Index_t nx, Int_t totalRank)
   Index_t comBufSize =
      (planeMin + planeMax) *
       domain->maxPlaneSize * MAX_FIELDS_PER_MPI_COMM ;
+
+  GLBL_COMM_BUFFSIZE = comBufSize;
 
   if (comBufSize != 0) {
      domain->commDataSend_d.resize(comBufSize) ;
@@ -4502,11 +4505,45 @@ int main(int argc, char *argv[])
   cudaEventCreate(&timer_stop);
   cudaEventRecord( timer_start );
 
+  //Protect variables
+  FTI_Protect(1, &its, 1, FTI_INTG);
+  FTI_Protect(2, &locDom->deltatime_h, 1, FTI_DBLE);
+  FTI_Protect(3, &locDom->cycle, 1, FTI_INTG);
+  FTI_Protect(4, locDom->commDataRecv_h, GLBL_COMM_BUFFSIZE, FTI_DBLE);
+  FTI_Protect(5, locDom->dtcourant_h, 1, FTI_DBLE);
+  FTI_Protect(6, locDom->dthydro_h, 1, FTI_DBLE);
+  FTI_Protect(7, locDom->bad_vol_h, 1, FTI_INTG);
+  FTI_Protect(8, locDom->bad_q_h, 1, FTI_INTG);
+  FTI_Protect(9, locDom->commDataSend_h, GLBL_COMM_BUFFSIZE, FTI_DBLE);
+  int res = 0;
+
   while(locDom->time_h < locDom->stoptime)
   {
     // Time increment has been moved after computation of volume forces to 
     // Allow MPI_Allreduce to overlap with computation on GPU
     //TimeIncrement(locDom) ;
+
+    res = FTI_Snapshot();
+
+    if(res == FTI_SCES){
+      fprintf(stdout, "FTI: Recovery successful\n");
+      fflush(stdout);
+    }
+
+    if(res == FTI_DONE){
+      fprintf(stdout, "FTI: Checkpointing successful\n");
+      fflush(stdout);
+    }
+
+    if(res == FTI_NSCS){
+      fprintf(stderr, "FTI: Failure in FTI_Checkpoint\n");
+      fflush(stderr);
+    }
+
+    if(res == FTI_NREC){
+      fprintf(stderr, "FTI: Failure on recovery\n");
+      fflush(stderr);
+    }
 
     LagrangeLeapFrog(locDom) ;
 
