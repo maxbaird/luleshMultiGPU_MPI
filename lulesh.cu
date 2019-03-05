@@ -1897,9 +1897,7 @@ __launch_bounds__(64,4)
 #else
 __launch_bounds__(64,8) 
 #endif
-//void FTI_KERNEL_DEF(CalcVolumeForceForElems_kernel_FTI,
-void CalcVolumeForceForElems_kernel_FTI(
-
+void FTI_KERNEL_DEF(CalcVolumeForceForElems_kernel_FTI,
     const Real_t* __restrict__ volo, 
     const Real_t* __restrict__ v,
     const Real_t* __restrict__ p, 
@@ -1926,7 +1924,7 @@ void CalcVolumeForceForElems_kernel_FTI(
     const Index_t num_threads)
 
 {
-  //FTI_CONTINUE();
+  FTI_CONTINUE();
   /*************************************************
   *     FUNCTION: Calculates the volume forces
   *************************************************/
@@ -2266,8 +2264,8 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         //  num_threads
         //  
         //);
-        CalcVolumeForceForElems_kernel_FTI<true><<<dimGrid,block_size,0,domain->streams[1]>>>
-         (domain->volo.raw()+offset, 
+        CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
+        ( domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
           domain->p.raw()+offset, 
           domain->q.raw()+offset,
@@ -2290,30 +2288,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
           num_threads
           
         );
-        //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
-        //( domain->volo.raw()+offset, 
-        //  domain->v.raw()+offset, 
-        //  domain->p.raw()+offset, 
-        //  domain->q.raw()+offset,
-	      //  hgcoef, numElem, padded_numElem,
-        //  domain->nodelist.raw()+offset, 
-        //  domain->ss.raw()+offset, 
-        //  domain->elemMass.raw()+offset,
-        //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-        //  fx_elem->raw()+offset, 
-        //  fy_elem->raw()+offset, 
-        //  fz_elem->raw()+offset ,
-//#else
-        //  domain->fx.raw(),
-        //  domain->fy.raw(),
-        //  domain->fz.raw(),
-//#endif
-        //  domain->bad_vol_h+offset,
-        //  align_offset,
-        //  num_threads
-        //  
-        //);
       }
       else
       {
@@ -4430,9 +4404,6 @@ int main(int argc, char *argv[])
    MPI_Comm_rank(MPI_COMM_WORLD, &myRank) ;
 
    MPI_Comm SUB_COMM;
-   //MPI_Comm DUP_COMM;
-
-   //MPI_Comm_dup(MPI_COMM_WORLD, &DUP_COMM);
 
    int colour = 0;
 
