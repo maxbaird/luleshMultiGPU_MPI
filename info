@@ -2,3 +2,83 @@ Downloaded from:
 https://computation.llnl.gov/projects/co-design/download/luleshMultiGPU_022213.tgz
 
 Webpage: https://computation.llnl.gov/projects/co-design/lulesh
+
+CPU VARIABLES
+its [int]
+domain->deltatime_h [double]
+domain->time_h [double]
+domain->cycle [int]
+
+                                
+--------------------------------------
+GPU VARIABLES
+domain->dtcourant_h [double*]
+domain->dthydro_h [double*]
+domain->bad_vol_h [int*]
+domain->bad_q_h [int*]
+
+
+--------------------------------------------
+cudaMallocHost VARIABLES
+
+domain->commDataSend_h [double*] //no. of elements = GLOBAL_COMM_BUFSIZE
+domain->commDataRecv_h [double*] //no. of elements = GLOBAL_COMM_BUFSIZE
+
+--------------------------------------------
+thrust varaibles
+//Don't need to do anything for Vector_d allocations in function LagrangeElements(Domain *domain)
+Index_t is int
+Int_t is int
+Real_t is double
+  Vector_d<Index_t> matElemlist ; 
+  Vector_d<Index_t> nodelist ;   
+  Vector_d<Index_t> lxim ;        
+  Vector_d<Index_t> lxip ;
+  Vector_d<Index_t> letam ;
+  Vector_d<Index_t> letap ;
+  Vector_d<Index_t> lzetam ;
+  Vector_d<Index_t> lzetap ;
+  Vector_d<Int_t> elemBC ;       
+  Vector_d<Real_t> e ;            
+  Vector_d<Real_t> p ;            
+  Vector_d<Real_t> q ;            
+  Vector_d<Real_t> ql ;           
+  Vector_d<Real_t> qq ;           
+  Vector_d<Real_t> v ;           
+  Vector_d<Real_t> volo ;        
+  Vector_d<Real_t> delv ;        
+  Vector_d<Real_t> vdov ;         
+  Vector_d<Real_t> arealg ;       
+  Vector_d<Real_t> ss ;           
+  Vector_d<Real_t> elemMass ;    
+  Vector_d<Real_t> x ;           
+  Vector_d<Real_t> y ;
+  Vector_d<Real_t> z ;
+  Vector_d<Real_t> xd ;          
+  Vector_d<Real_t> yd ;
+  Vector_d<Real_t> zd ;
+  Vector_d<Real_t> xdd ;          
+  Vector_d<Real_t> ydd ;
+  Vector_d<Real_t> zdd ;
+  Vector_d<Real_t> fx ;           
+  Vector_d<Real_t> fy ;
+  Vector_d<Real_t> fz ;
+  Vector_d<Real_t> nodalMass ;    
+  Vector_d<Real_t> commDataSend_d ;
+  Vector_d<Real_t> commDataRecv_d ;
+  Vector_d<Index_t> symmX ;       
+  Vector_d<Index_t> symmY ;        
+  Vector_d<Index_t> symmZ ;
+  Vector_d<Int_t> nodeElemCount ;
+  Vector_d<Int_t> nodeElemStart;
+  Vector_d<Index_t> nodeElemCornerList ;
+
+Notes:
+When launching FTI without the kernel being protected ensure that ALL processes initialize
+FTI. i.e temporarily remove MPI_Comm_split.
+
+Then ensure that the number of work items to lulesh is a multiple of the number of MPI processes.
+
+
+without interrupting: 341.99 seconds
+after restarting from interrupt: 262.43 seconds
