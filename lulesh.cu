@@ -1897,161 +1897,6 @@ __launch_bounds__(64,4)
 #else
 __launch_bounds__(64,8) 
 #endif
-void FTI_KERNEL_DEF(CalcVolumeForceForElems_kernel_FTI,
-    const Real_t* __restrict__ volo, 
-    const Real_t* __restrict__ v,
-    const Real_t* __restrict__ p, 
-    const Real_t* __restrict__ q,
-    Real_t hourg,
-    Index_t numElem, 
-    Index_t padded_numElem, 
-    const Index_t* __restrict__ nodelist,
-    const Real_t* __restrict__ ss, 
-    const Real_t* __restrict__ elemMass,
-    TextureObj<Real_t> x,  TextureObj<Real_t> y,  TextureObj<Real_t> z,
-    TextureObj<Real_t> xd,  TextureObj<Real_t> yd,  TextureObj<Real_t> zd,
-#ifdef DOUBLE_PRECISION // For floats, use atomicAdd
-    Real_t* __restrict__ fx_elem, 
-    Real_t* __restrict__ fy_elem, 
-    Real_t* __restrict__ fz_elem,
-#else
-    Real_t* __restrict__ fx_node, 
-    Real_t* __restrict__ fy_node, 
-    Real_t* __restrict__ fz_node,
-#endif
-    Index_t* __restrict__ bad_vol,
-    const Index_t align_offset,
-    const Index_t num_threads)
-
-{
-  FTI_CONTINUE();
-  /*************************************************
-  *     FUNCTION: Calculates the volume forces
-  *************************************************/
-
-  Real_t xn[8],yn[8],zn[8];;
-  Real_t xdn[8],ydn[8],zdn[8];;
-  Real_t dvdxn[8],dvdyn[8],dvdzn[8];;
-  Real_t hgfx[8],hgfy[8],hgfz[8];;
-  Real_t hourgam[8][4];
-  Real_t coefficient;
-
-  int tid=blockDim.x*blockIdx.x+threadIdx.x;
-  int elem  = tid - align_offset;
-  if ((unsigned int) elem < num_threads) 
-  {
-    Real_t volume = v[elem];
-    Real_t det = volo[elem] * volume;
-
-    // Check for bad volume
-    if (volume < 0.) {
-      *bad_vol = elem; 
-    }
-
-    Real_t ss1 = ss[elem];
-    Real_t mass1 = elemMass[elem];
-    Real_t sigxx = -p[elem] - q[elem];
-
-    Index_t n[8];
-    #pragma unroll 
-    for (int i=0;i<8;i++) {
-      n[i] = nodelist[elem+i*padded_numElem];
-    }
-
-    Real_t volinv = Real_t(1.0) / det;
-    #pragma unroll 
-    for (int i=0;i<8;i++) {
-      xn[i] =x[n[i]];
-      yn[i] =y[n[i]];
-      zn[i] =z[n[i]];
-    }
-
-    Real_t volume13 = CBRT(det);
-    coefficient = - hourg * Real_t(0.01) * ss1 * mass1 / volume13;
-
-    /*************************************************/
-    /*    compute the volume derivatives             */
-    /*************************************************/
-    CalcElemVolumeDerivative(dvdxn, dvdyn, dvdzn, xn, yn, zn); 
-
-    /*************************************************/
-    /*    compute the hourglass modes                */
-    /*************************************************/
-    CalcHourglassModes(xn,yn,zn,dvdxn,dvdyn,dvdzn,hourgam,volinv);
-
-    /*************************************************/
-    /*    CalcStressForElems                         */
-    /*************************************************/
-    Real_t B[3][8];
-
-    CalcElemShapeFunctionDerivatives(xn, yn, zn, B, &det); 
-    CalcElemNodeNormals( B[0] , B[1], B[2], xn, yn, zn); 
-
-    // Check for bad volume
-    if (det < 0.) {
-      *bad_vol = elem; 
-    }
-
-    #pragma unroll
-    for (int i=0;i<8;i++)
-    {
-      hgfx[i] = -( sigxx*B[0][i] );
-      hgfy[i] = -( sigxx*B[1][i] );
-      hgfz[i] = -( sigxx*B[2][i] );
-    }
-
-    if (hourg_gt_zero)
-    {
-      /*************************************************/
-      /*    CalcFBHourglassForceForElems               */
-      /*************************************************/
-
-      #pragma unroll 
-      for (int i=0;i<8;i++) {
-        xdn[i] =xd[n[i]];
-        ydn[i] =yd[n[i]];
-        zdn[i] =zd[n[i]];
-      }
-
-      CalcElemFBHourglassForce
-      ( &xdn[0],&ydn[0],&zdn[0],
-	      hourgam[0],hourgam[1],hourgam[2],hourgam[3],
-        hourgam[4],hourgam[5],hourgam[6],hourgam[7],
-	    	coefficient,
-	    	&hgfx[0],&hgfy[0],&hgfz[0]
-      );
-
-    }
-
-#ifdef DOUBLE_PRECISION
-    #pragma unroll
-    for (int node=0;node<8;node++)
-    {
-      Index_t store_loc = elem+padded_numElem*node;
-      fx_elem[store_loc]=hgfx[node]; 
-      fy_elem[store_loc]=hgfy[node]; 
-      fz_elem[store_loc]=hgfz[node];
-    }
-#else
-    #pragma unroll
-    for (int i=0;i<8;i++)
-    {
-      Index_t ni= n[i];
-      atomicAddLulesh(&fx_node[ni],hgfx[i]); 
-      atomicAddLulesh(&fy_node[ni],hgfy[i]); 
-      atomicAddLulesh(&fz_node[ni],hgfz[i]);
-    } 
-#endif
-
-  } // If elem < numElem
-}
-template< bool hourg_gt_zero > 
-__global__
-#ifdef DOUBLE_PRECISION
-__launch_bounds__(64,4) 
-#else
-__launch_bounds__(64,8) 
-#endif
 void CalcVolumeForceForElems_kernel(
 
     const Real_t* __restrict__ volo, 
@@ -2237,33 +2082,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       bool hourg_gt_zero = hgcoef > Real_t(0.0);
       if (hourg_gt_zero)
       {
-        //avg execution time 26ms or 0.026 Seconds
-        //fprintf(stdout, "%d: About to launch kernel 42\n", GLOBAL_RANK);
-        //fflush(stdout);
-        //FTI_Protect_Kernel(42, 0.001, (CalcVolumeForceForElems_kernel_FTI<true>),dimGrid,block_size,0,domain->streams[1],
-        // domain->volo.raw()+offset, 
-        //  domain->v.raw()+offset, 
-        //  domain->p.raw()+offset, 
-        //  domain->q.raw()+offset,
-	      //  hgcoef, numElem, padded_numElem,
-        //  domain->nodelist.raw()+offset, 
-        //  domain->ss.raw()+offset, 
-        //  domain->elemMass.raw()+offset,
-        //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-        //  fx_elem->raw()+offset, 
-        //  fy_elem->raw()+offset, 
-        //  fz_elem->raw()+offset ,
-//#else
-        //  domain->fx.raw(),
-        //  domain->fy.raw(),
-        //  domain->fz.raw(),
-//#endif
-        //  domain->bad_vol_h+offset,
-        //  align_offset,
-        //  num_threads
-        //  
-        //);
         CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
         ( domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
@@ -2291,32 +2109,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       }
       else
       {
-        //avg execution time 26ms or 0.026 Seconds
-        //fprintf(stderr, "%d: About to launch kernel 43\n", GLOBAL_RANK);
-        //fflush(stderr);
-        //FTI_Protect_Kernel(43,0.001,(CalcVolumeForceForElems_kernel<false>), dimGrid,block_size,0,domain->streams[1],
-        // domain->volo.raw()+offset, 
-        //  domain->v.raw()+offset, 
-        //  domain->p.raw()+offset, 
-        //  domain->q.raw()+offset,
-	      //  hgcoef, numElem, padded_numElem,
-        //  domain->nodelist.raw()+offset, 
-        //  domain->ss.raw()+offset, 
-        //  domain->elemMass.raw()+offset,
-        //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-        //  fx_elem->raw()+offset, 
-        //  fy_elem->raw()+offset, 
-        //  fz_elem->raw()+offset ,
-//#else
-        //  domain->fx.raw(),
-        //  domain->fy.raw(),
-        //  domain->fz.raw(),
-//#endif
-        //  domain->bad_vol_h+offset,
-        //  align_offset,
-        //  num_threads
-        //);
         CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size,0,domain->streams[1]>>>
         ( domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
@@ -2380,31 +2172,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       bool hourg_gt_zero = hgcoef > Real_t(0.0);
       if (hourg_gt_zero)
       {
-        //fprintf(stderr, "%d:About to launch kernel 44\n", GLOBAL_RANK);
-        //fflush(stderr);
-        //FTI_Protect_Kernel(44,0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
-        // domain->volo.raw()+offset, 
-        //  domain->v.raw()+offset, 
-        //  domain->p.raw()+offset, 
-        //  domain->q.raw()+offset,
-	      //  hgcoef, numElem, padded_numElem,
-        //  domain->nodelist.raw()+offset, 
-        //  domain->ss.raw()+offset, 
-        //  domain->elemMass.raw()+offset,
-        //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-        //  fx_elem->raw()+offset, 
-        //  fy_elem->raw()+offset, 
-        //  fz_elem->raw()+offset ,
-//#else
-        //  domain->fx.raw(),
-        //  domain->fy.raw(),
-        //  domain->fz.raw(),
-//#endif
-        //  domain->bad_vol_h+offset,
-        //  align_offset,
-        //  num_threads         
-        //);
         CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
         ( domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
@@ -2431,54 +2198,29 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       }
       else
       {
-        //fprintf(stderr, "%d: About to launch kernel 45\n", GLOBAL_RANK);
-        //fflush(stderr);
-        //FTI_Protect_Kernel(45,0.001,(CalcVolumeForceForElems_kernel<false>),dimGrid,block_size,0,domain->streams[1],
-        //  domain->volo.raw()+offset, 
-        //  domain->v.raw()+offset, 
-        //  domain->p.raw()+offset, 
-        //  domain->q.raw()+offset,
-	      //  hgcoef, numElem, padded_numElem,
-        //  domain->nodelist.raw()+offset, 
-        //  domain->ss.raw()+offset, 
-        //  domain->elemMass.raw()+offset,
-        //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-        //  fx_elem->raw()+offset, 
-        //  fy_elem->raw()+offset, 
-        //  fz_elem->raw()+offset ,
-//#else
-        //  domain->fx.raw(),
-        //  domain->fy.raw(),
-        //  domain->fz.raw(),
-//#endif
-        //  domain->bad_vol_h+offset,
-        //  align_offset,
-        //  num_threads
-        //);
-        //CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size,0,domain->streams[1]>>>
-        //( domain->volo.raw()+offset, 
-        //  domain->v.raw()+offset, 
-        //  domain->p.raw()+offset, 
-        //  domain->q.raw()+offset,
-	      //  hgcoef, numElem, padded_numElem,
-        //  domain->nodelist.raw()+offset, 
-        //  domain->ss.raw()+offset, 
-        //  domain->elemMass.raw()+offset,
-        //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-        //  fx_elem->raw()+offset, 
-        //  fy_elem->raw()+offset, 
-        //  fz_elem->raw()+offset ,
-//#else
-        //  domain->fx.raw(),
-        //  domain->fy.raw(),
-        //  domain->fz.raw(),
-//#endif
-        //  domain->bad_vol_h+offset,
-        //  align_offset,
-        //  num_threads
-        //);
+        CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size,0,domain->streams[1]>>>
+        ( domain->volo.raw()+offset, 
+          domain->v.raw()+offset, 
+          domain->p.raw()+offset, 
+          domain->q.raw()+offset,
+	        hgcoef, numElem, padded_numElem,
+          domain->nodelist.raw()+offset, 
+          domain->ss.raw()+offset, 
+          domain->elemMass.raw()+offset,
+          domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
+#ifdef DOUBLE_PRECISION
+          fx_elem->raw()+offset, 
+          fy_elem->raw()+offset, 
+          fz_elem->raw()+offset ,
+#else
+          domain->fx.raw(),
+          domain->fy.raw(),
+          domain->fz.raw(),
+#endif
+          domain->bad_vol_h+offset,
+          align_offset,
+          num_threads
+        );
       }
 
 #ifdef DOUBLE_PRECISION
@@ -2522,31 +2264,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     bool hourg_gt_zero = hgcoef > Real_t(0.0);
     if (hourg_gt_zero)
     {
-      //fprintf(stderr, "%d: About to launch kernel 46\n", GLOBAL_RANK);
-      //fflush(stderr);
-      //FTI_Protect_Kernel(46,0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
-      //  domain->volo.raw()+offset, 
-      //  domain->v.raw()+offset, 
-      //  domain->p.raw()+offset, 
-      //  domain->q.raw()+offset,
-	    //  hgcoef, numElem, padded_numElem,
-      //  domain->nodelist.raw()+offset, 
-      //  domain->ss.raw()+offset, 
-      //  domain->elemMass.raw()+offset,
-      //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-      //  fx_elem->raw()+offset, 
-      //  fy_elem->raw()+offset, 
-      //  fz_elem->raw()+offset ,
-//#else
-      //  domain->fx.raw(),
-      //  domain->fy.raw(),
-      //  domain->fz.raw(),
-//#endif
-      //  domain->bad_vol_h+offset,
-      //  align_offset,
-      //  num_threads
-      //);
       CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
       ( domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
@@ -2573,31 +2290,6 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     }
     else
     {
-      //fprintf(stderr, "%d: About to launch kernel 47\n", GLOBAL_RANK);
-      //fflush(stderr);
-      //FTI_Protect_Kernel(47,0.001,(CalcVolumeForceForElems_kernel<false>), dimGrid,block_size,0,domain->streams[1],
-      //  domain->volo.raw()+offset, 
-      //  domain->v.raw()+offset, 
-      //  domain->p.raw()+offset, 
-      //  domain->q.raw()+offset,
-	    //  hgcoef, numElem, padded_numElem,
-      //  domain->nodelist.raw()+offset, 
-      //  domain->ss.raw()+offset, 
-      //  domain->elemMass.raw()+offset,
-      //  domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-//#ifdef DOUBLE_PRECISION
-      //  fx_elem->raw()+offset, 
-      //  fy_elem->raw()+offset, 
-      //  fz_elem->raw()+offset ,
-//#else
-      //  domain->fx.raw(),
-      //  domain->fy.raw(),
-      //  domain->fz.raw(),
-//#endif
-      //  domain->bad_vol_h+offset,
-      //  align_offset,
-      //  num_threads
-      //);
       CalcVolumeForceForElems_kernel<false> <<<dimGrid,block_size,0,domain->streams[1]>>>
       ( domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
@@ -4522,8 +4214,6 @@ int main(int argc, char *argv[])
   int res = 0;
 
   res = FTI_Snapshot();
-  //fprintf(stdout, "Value of locDom->bad_vol_h: %d\n", *(locDom->bad_vol_h));
-  //fflush(stdout);
 
   while(locDom->time_h < locDom->stoptime)
   {
@@ -4534,24 +4224,21 @@ int main(int argc, char *argv[])
     res = FTI_Snapshot();
 
     if(res == FTI_DONE){
-      fprintf(stdout, "FTI: Checkpointing successful:%d\n", its);
+      fprintf(stdout, "%d: FTI: Checkpointing successful:%d\n", myRank, its);
       fflush(stdout);
     }
 
     if(res == FTI_NSCS){
-      fprintf(stderr, "FTI: Failure in FTI_Checkpoint\n");
+      fprintf(stderr, "%d: FTI: Failure in FTI_Checkpoint\n", myRank);
       fflush(stderr);
     }
 
     if(res == FTI_NREC){
-      fprintf(stderr, "FTI: Failure on recovery\n");
+      fprintf(stderr, "%d: FTI: Failure on recovery\n", myRank);
       fflush(stderr);
     }
 
     LagrangeLeapFrog(locDom) ;
-
-    //fprintf(stdout, "%d: Value of locDom->bad_vol_h: %d\n", myRank,*(locDom->bad_vol_h));
-    //fflush(stdout);
 
     checkErrors(locDom,its);
 
