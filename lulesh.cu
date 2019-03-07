@@ -4405,7 +4405,10 @@ int main(int argc, char *argv[])
   cudaEventCreate(&timer_stop);
   cudaEventRecord( timer_start );
 
-  ProtectVariables(locDom, nx, &its);
+  if(myRank != 0){
+    ProtectVariables(locDom, nx, &its);
+    FTI_Snapshot();
+  }
 
   //int res = 0;
 
