@@ -4078,6 +4078,63 @@ void write_solution(Domain* locDom)
   fclose(fout);
 }
 
+void ProtectVariables(Domain *domain, Index_t nx, int *its){
+  FTI_Protect(1, its, 1, FTI_INTG);
+  FTI_Protect(2, &domain->deltatime_h, 1, FTI_DBLE);
+  FTI_Protect(3, &domain->time_h, 1, FTI_DBLE);
+  FTI_Protect(4, &domain->cycle, 1, FTI_INTG);
+  FTI_Protect(5, domain->dtcourant_h, 1, FTI_DBLE);
+  FTI_Protect(6, domain->dthydro_h, 1, FTI_DBLE);
+  FTI_Protect(7, domain->bad_vol_h, 1, FTI_INTG);
+  FTI_Protect(8, domain->bad_q_h, 1, FTI_INTG);
+  FTI_Protect(9, domain->commDataSend_h, GLBL_COMM_BUFFSIZE, FTI_DBLE);
+  FTI_Protect(10, domain->commDataRecv_h, GLBL_COMM_BUFFSIZE, FTI_DBLE);
+  FTI_Protect(11, domain->matElemlist.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(12, domain->nodelist.raw(), 8*domain->padded_numElem, FTI_INTG);
+  FTI_Protect(13, domain->lxim.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(14, domain->lxip.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(15, domain->letam.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(16, domain->letap.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(17, domain->lzetam.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(18, domain->lzetap.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(19, domain->elemBC.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(20, domain->e.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(21, domain->p.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(22, domain->q.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(23, domain->ql.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(24, domain->qq.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(25, domain->v.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(26, domain->volo.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(27, domain->delv.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(28, domain->vdov.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(29, domain->arealg.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(30, domain->ss.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(31, domain->elemMass.raw(), domain->numElem, FTI_DBLE);
+  FTI_Protect(32, domain->x.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(33, domain->y.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(34, domain->z.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(35, domain->xd.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(36, domain->yd.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(37, domain->zd.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(38, domain->xdd.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(39, domain->ydd.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(40, domain->zdd.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(41, domain->fx.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(42, domain->fy.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(43, domain->fz.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(44, domain->nodalMass.raw(), domain->numNode, FTI_DBLE);
+  FTI_Protect(45, domain->commDataSend_d.raw(), GLBL_COMM_BUFFSIZE, FTI_DBLE); //GLBL_COMM_BUFFSIZE can be zero!
+  FTI_Protect(46, domain->commDataRecv_d.raw(), GLBL_COMM_BUFFSIZE, FTI_DBLE); //GLBL_COMM_BUFFSIZE can be zero!
+  FTI_Protect(47, domain->symmX.raw(), (nx+1)*(domain->sizeZ+1), FTI_INTG);
+  FTI_Protect(48, domain->symmY.raw(), (nx+1)*(domain->sizeZ+1), FTI_INTG);
+  int size_z = (domain->myRank == 0) ? (nx+1)*(nx+1) : 0;
+  FTI_Protect(49, domain->symmZ.raw(), size_z, FTI_INTG);
+  FTI_Protect(50, domain->nodeElemCount.raw(), domain->numNode, FTI_INTG);
+  FTI_Protect(51, domain->nodeElemStart.raw(), domain->numNode, FTI_INTG);
+  int cornerListSize = domain->nodeElemStart[domain->numNode-1]+domain->nodeElemCount[domain->numNode-1];
+  FTI_Protect(52, domain->nodeElemCornerList.raw(), cornerListSize, FTI_INTG);
+}
+
 int main(int argc, char *argv[])
 {
   if (argc != 2) {
@@ -4155,61 +4212,7 @@ int main(int argc, char *argv[])
   cudaEventCreate(&timer_stop);
   cudaEventRecord( timer_start );
 
-  //Protect variables
-  FTI_Protect(1, &its, 1, FTI_INTG);
-  FTI_Protect(2, &locDom->deltatime_h, 1, FTI_DBLE);
-  FTI_Protect(3, &locDom->time_h, 1, FTI_DBLE);
-  FTI_Protect(4, &locDom->cycle, 1, FTI_INTG);
-  FTI_Protect(5, locDom->dtcourant_h, 1, FTI_DBLE);
-  FTI_Protect(6, locDom->dthydro_h, 1, FTI_DBLE);
-  FTI_Protect(7, locDom->bad_vol_h, 1, FTI_INTG);
-  FTI_Protect(8, locDom->bad_q_h, 1, FTI_INTG);
-  FTI_Protect(9, locDom->commDataSend_h, GLBL_COMM_BUFFSIZE, FTI_DBLE);
-  FTI_Protect(10, locDom->commDataRecv_h, GLBL_COMM_BUFFSIZE, FTI_DBLE);
-  FTI_Protect(11, locDom->matElemlist.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(12, locDom->nodelist.raw(), 8*locDom->padded_numElem, FTI_INTG);
-  FTI_Protect(13, locDom->lxim.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(14, locDom->lxip.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(15, locDom->letam.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(16, locDom->letap.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(17, locDom->lzetam.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(18, locDom->lzetap.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(19, locDom->elemBC.raw(), locDom->numElem, FTI_INTG);
-  FTI_Protect(20, locDom->e.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(21, locDom->p.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(22, locDom->q.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(23, locDom->ql.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(24, locDom->qq.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(25, locDom->v.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(26, locDom->volo.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(27, locDom->delv.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(28, locDom->vdov.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(29, locDom->arealg.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(30, locDom->ss.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(31, locDom->elemMass.raw(), locDom->numElem, FTI_DBLE);
-  FTI_Protect(32, locDom->x.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(33, locDom->y.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(34, locDom->z.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(35, locDom->xd.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(36, locDom->yd.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(37, locDom->zd.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(38, locDom->xdd.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(39, locDom->ydd.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(40, locDom->zdd.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(41, locDom->fx.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(42, locDom->fy.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(43, locDom->fz.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(44, locDom->nodalMass.raw(), locDom->numNode, FTI_DBLE);
-  FTI_Protect(45, locDom->commDataSend_d.raw(), GLBL_COMM_BUFFSIZE, FTI_DBLE); //GLBL_COMM_BUFFSIZE can be zero!
-  FTI_Protect(46, locDom->commDataRecv_d.raw(), GLBL_COMM_BUFFSIZE, FTI_DBLE); //GLBL_COMM_BUFFSIZE can be zero!
-  FTI_Protect(47, locDom->symmX.raw(), (nx+1)*(locDom->sizeZ+1), FTI_INTG);
-  FTI_Protect(48, locDom->symmY.raw(), (nx+1)*(locDom->sizeZ+1), FTI_INTG);
-  int size_z = (myRank == 0) ? (nx+1)*(nx+1) : 0;
-  FTI_Protect(49, locDom->symmZ.raw(), size_z, FTI_INTG);
-  FTI_Protect(50, locDom->nodeElemCount.raw(), locDom->numNode, FTI_INTG);
-  FTI_Protect(51, locDom->nodeElemStart.raw(), locDom->numNode, FTI_INTG);
-  int cornerListSize = locDom->nodeElemStart[locDom->numNode-1]+locDom->nodeElemCount[locDom->numNode-1];
-  FTI_Protect(52, locDom->nodeElemCornerList.raw(), cornerListSize, FTI_INTG);
+  ProtectVariables(locDom, nx, &its);
 
   int res = 0;
 
