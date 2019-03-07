@@ -4148,12 +4148,25 @@ int main(int argc, char *argv[])
 
    int numRanks, myRank;
    MPI_Init(&argc, &argv) ;
-   FTI_Init(fti_config_path, MPI_COMM_WORLD);
 
-   MPI_Comm_size(FTI_COMM_WORLD, &numRanks);
-   MPI_Comm_rank(FTI_COMM_WORLD, &myRank) ;
+   MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
+   MPI_Comm_rank(MPI_COMM_WORLD, &myRank) ;
 
-   GLOBAL_RANK = myRank;
+   MPI_Comm SUB_COMM;
+
+   int colour = 0;
+
+   if(myRank != 0){
+      colour = 42;
+   }
+
+   MPI_Comm_split(MPI_COMM_WORLD, colour, myRank, &SUB_COMM);
+
+   if(myRank != 0){
+    FTI_Init(fti_config_path, SUB_COMM);
+   }
+
+   GLOBAL_RANK = myRank; //Not needed since a domain object holds the rank?
 
    cuda_init(myRank);
 
@@ -4214,9 +4227,9 @@ int main(int argc, char *argv[])
 
   ProtectVariables(locDom, nx, &its);
 
-  int res = 0;
+  //int res = 0;
 
-  res = FTI_Snapshot();
+  //res = FTI_Snapshot();
 
   while(locDom->time_h < locDom->stoptime)
   {
@@ -4224,22 +4237,22 @@ int main(int argc, char *argv[])
     // Allow MPI_Allreduce to overlap with computation on GPU
     //TimeIncrement(locDom) ;
 
-    res = FTI_Snapshot();
+    //res = FTI_Snapshot();
 
-    if(res == FTI_DONE){
-      fprintf(stdout, "%d: FTI: Checkpointing successful:%d\n", myRank, its);
-      fflush(stdout);
-    }
+    //if(res == FTI_DONE){
+    //  fprintf(stdout, "%d: FTI: Checkpointing successful:%d\n", myRank, its);
+    //  fflush(stdout);
+    //}
 
-    if(res == FTI_NSCS){
-      fprintf(stderr, "%d: FTI: Failure in FTI_Checkpoint\n", myRank);
-      fflush(stderr);
-    }
+    //if(res == FTI_NSCS){
+    //  fprintf(stderr, "%d: FTI: Failure in FTI_Checkpoint\n", myRank);
+    //  fflush(stderr);
+    //}
 
-    if(res == FTI_NREC){
-      fprintf(stderr, "%d: FTI: Failure on recovery\n", myRank);
-      fflush(stderr);
-    }
+    //if(res == FTI_NREC){
+    //  fprintf(stderr, "%d: FTI: Failure on recovery\n", myRank);
+    //  fflush(stderr);
+    //}
 
     LagrangeLeapFrog(locDom) ;
 
