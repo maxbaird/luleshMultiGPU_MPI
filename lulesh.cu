@@ -2228,6 +2228,10 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     // Launch kernel for bottom boundary in stream 1
     if (planeMin)
     {
+      //if(domain->myRank == 0){
+      //  fprintf(stdout, "Process zero gets in planeMin\n");
+      //  fflush(stdout);
+      //}
       int num_threads = n_plane_cells;
       int offset = 0;
       int align_offset = (offset % 32);
@@ -4328,23 +4332,24 @@ int main(int argc, char *argv[])
 
    int numRanks, myRank;
    MPI_Init(&argc, &argv) ;
+   FTI_Init(fti_config_path, MPI_COMM_WORLD);
+  
+   MPI_Comm_size(FTI_COMM_WORLD, &numRanks);
+   MPI_Comm_rank(FTI_COMM_WORLD, &myRank) ;
 
-   MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
-   MPI_Comm_rank(MPI_COMM_WORLD, &myRank) ;
+   //MPI_Comm SUB_COMM;
 
-   MPI_Comm SUB_COMM;
+   //int colour = 0;
 
-   int colour = 0;
+   //if(myRank != 0){
+   //   colour = 42;
+   //}
 
-   if(myRank != 0){
-      colour = 42;
-   }
+   //MPI_Comm_split(MPI_COMM_WORLD, colour, myRank, &SUB_COMM);
 
-   MPI_Comm_split(MPI_COMM_WORLD, colour, myRank, &SUB_COMM);
-
-   if(myRank != 0){
-    FTI_Init(fti_config_path, SUB_COMM);
-   }
+   //if(myRank != 0){
+   // FTI_Init(fti_config_path, SUB_COMM);
+   //}
 
    GLOBAL_RANK = myRank; //Not needed since a domain object holds the rank?
 
@@ -4405,10 +4410,7 @@ int main(int argc, char *argv[])
   cudaEventCreate(&timer_stop);
   cudaEventRecord( timer_start );
 
-  if(myRank != 0){
-    ProtectVariables(locDom, nx, &its);
-    FTI_Snapshot();
-  }
+  ProtectVariables(locDom, nx, &its);
 
   //int res = 0;
 
