@@ -2226,7 +2226,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     Index_t n_plane_cells = (domain->sizeX)*(domain->sizeY);
 
     // Launch kernel for bottom boundary in stream 1
-    if (planeMin)
+    if (planeMin || domain->myRank == 0)
     {
       //if(domain->myRank == 0){
       //  fprintf(stdout, "Process zero gets in planeMin\n");
@@ -2240,9 +2240,9 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       int dimGrid = PAD_DIV(num_threads+align_offset,block_size);
 
       bool hourg_gt_zero = hgcoef > Real_t(0.0);
-      if (hourg_gt_zero)
+      if (hourg_gt_zero || domain->myRank == 0)
       {
-        FTI_Protect_Kernel(1, 0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+        FTI_Protect_Kernel(domain->myRank, 1, 0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
           domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
           domain->p.raw()+offset, 
@@ -2319,6 +2319,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       }
 
 #ifdef DOUBLE_PRECISION
+      if(domain->myRank != 0){
       num_threads = n_plane_nodes;
       offset = 0;
       dimGrid= PAD_DIV(num_threads,block_size);
@@ -2338,6 +2339,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         offset,
         num_threads
       );
+      }
 #endif
     }
 
