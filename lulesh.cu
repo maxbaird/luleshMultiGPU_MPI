@@ -4174,7 +4174,7 @@ int main(int argc, char *argv[])
     size_t free_mem, total_mem, used_mem;
     cudaMemGetInfo(&free_mem, &total_mem);
     used_mem= total_mem - free_mem;
-    printf("Memory=%8.4fMb\n", used_mem / (1024.*1024.) );
+    printf("Memory=%8.4f\n", used_mem / (1024.*1024.) );
   }
 
   bool write_solution_flag=false;
