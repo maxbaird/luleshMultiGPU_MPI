@@ -20,7 +20,7 @@ verbosity                      = 2
 
 
 [restart]
-failure                        = 1
+failure                        = 0
 exec_id                        = 2019-03-12_22-52-26
 
 
