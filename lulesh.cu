@@ -4162,22 +4162,22 @@ int main(int argc, char *argv[])
 
   if (myRank==0) 
   {
-	  printf("Run completed:  \n");
-    printf("   Elapsed Time        =  %8.4e seconds\n",elapsed_time);
-	  printf("   Problem size        =  %ix%ix%i \n",    nx,nx,nx);
-	  printf("   Iteration count     =  %i \n",    its);	
+	  //printf("Run completed:  \n");
+    printf("Elapsed Time=%8.4e\n", elapsed_time);
+	  printf("Problem size=%ix%ix%i \n", nx,nx,nx);
+	  printf("Iteration count=%i\n", its);	
 
     Real_t e_zero;
     cudaMemcpy(&e_zero, locDom->e.raw(), sizeof(Real_t),cudaMemcpyDeviceToHost) ;
-	  printf("   Final Origin Energy =  %16.10e \n", e_zero);	
+	  printf("Final Origin Energy= %16.10e \n", e_zero);	
 
     size_t free_mem, total_mem, used_mem;
     cudaMemGetInfo(&free_mem, &total_mem);
     used_mem= total_mem - free_mem;
-    printf("   Used Memory         =  %8.4f Mb\n", used_mem / (1024.*1024.) );
+    printf("Memory=%8.4fMb\n", used_mem / (1024.*1024.) );
   }
 
-  bool write_solution_flag=true;
+  bool write_solution_flag=false;
   if (write_solution_flag) {
     write_solution(locDom);
   }
