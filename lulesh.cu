@@ -4263,7 +4263,7 @@ int main(int argc, char *argv[])
     printf("Elapsed Time=%8.4e\n",elapsed_time);
 	  printf("Problem size=%ix%ix%i\n",    nx,nx,nx);
 	  printf("Iteration count=%i\n",    its);	
-    printf("Snapshots: %zu\n", snapshotCount);
+    printf("Snapshots= %zu\n", snapshotCount);
 
     Real_t e_zero;
     cudaMemcpy(&e_zero, locDom->e.raw(), sizeof(Real_t),cudaMemcpyDeviceToHost) ;
