@@ -4212,6 +4212,7 @@ int main(int argc, char *argv[])
   ProtectVariables(locDom, nx, &its);
 
   int res = 0;
+  size_t snapshotCount = 0;
 
   res = FTI_Snapshot();
 
@@ -4224,6 +4225,7 @@ int main(int argc, char *argv[])
     res = FTI_Snapshot();
 
     if(res == FTI_DONE){
+      snapshotCount++;
       fprintf(stdout, "%d: FTI: Checkpointing successful:%d\n", myRank, its);
       fflush(stdout);
     }
@@ -4261,6 +4263,7 @@ int main(int argc, char *argv[])
     printf("Elapsed Time=%8.4e\n",elapsed_time);
 	  printf("Problem size=%ix%ix%i\n",    nx,nx,nx);
 	  printf("Iteration count=%i\n",    its);	
+    printf("Snapshots: %zu\n", snapshotCount);
 
     Real_t e_zero;
     cudaMemcpy(&e_zero, locDom->e.raw(), sizeof(Real_t),cudaMemcpyDeviceToHost) ;
