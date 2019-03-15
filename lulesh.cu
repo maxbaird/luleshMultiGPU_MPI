@@ -274,6 +274,7 @@ class Domain
 
 public: 
 
+  size_t snapshotCount;
   Index_t max_streams;
   std::vector<cudaStream_t> streams;
 
@@ -485,6 +486,7 @@ Domain *NewDomain(Index_t myRank, Index_t nx, Int_t totalRank)
   Index_t ghostIdx[2] ;  /* offsets to ghost locations */
   Domain *domain = new Domain ;
 
+  domain->snapshotCount = 0;
   domain->numRanks = totalRank;
   domain->myRank = myRank;
 
@@ -517,9 +519,6 @@ Domain *NewDomain(Index_t myRank, Index_t nx, Int_t totalRank)
   domain->sizeZ = zEnd - zBegin ;
   domain->numElem = domain->sizeX*domain->sizeY*domain->sizeZ ;
   domain->padded_numElem = PAD(domain->numElem,32);
-
-  fprintf(stdout, "Num elements: %d\n, totalRank: %d\n domain->sizeX=%d\ndomain->sizeY=%d\ndomain->sizeZ=%d\n", domain->numElem, totalRank, domain->sizeX, domain->sizeY, domain->sizeZ);
-  fflush(stdout);
 
   domain->planeLoc = myRank ;
   domain->numNode = (domain->sizeX+1)*(domain->sizeY+1)*(domain->sizeZ+1) ;
@@ -2242,7 +2241,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       bool hourg_gt_zero = hgcoef > Real_t(0.0);
       if (hourg_gt_zero || domain->myRank == 0)
       {
-        FTI_Protect_Kernel(domain->myRank, 1, 0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+        FTI_Protect_Kernel(&domain->snapshotCount, domain->myRank, 1, 0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
           domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
           domain->p.raw()+offset, 
@@ -4339,20 +4338,6 @@ int main(int argc, char *argv[])
    MPI_Comm_size(FTI_COMM_WORLD, &numRanks);
    MPI_Comm_rank(FTI_COMM_WORLD, &myRank) ;
 
-   //MPI_Comm SUB_COMM;
-
-   //int colour = 0;
-
-   //if(myRank != 0){
-   //   colour = 42;
-   //}
-
-   //MPI_Comm_split(MPI_COMM_WORLD, colour, myRank, &SUB_COMM);
-
-   //if(myRank != 0){
-   // FTI_Init(fti_config_path, SUB_COMM);
-   //}
-
    GLOBAL_RANK = myRank; //Not needed since a domain object holds the rank?
 
    cuda_init(myRank);
@@ -4464,6 +4449,7 @@ int main(int argc, char *argv[])
     printf("Elapsed Time=%8.4e\n",elapsed_time);
 	  printf("Problem size=%ix%ix%i \n",    nx,nx,nx);
 	  printf("Iteration count=%i\n",    its);	
+    printf("Snapshots: %zu\n", locDom->snapshotCount);
 
     Real_t e_zero;
     cudaMemcpy(&e_zero, locDom->e.raw(), sizeof(Real_t),cudaMemcpyDeviceToHost) ;
