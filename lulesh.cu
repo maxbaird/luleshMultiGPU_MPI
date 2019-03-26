@@ -2241,7 +2241,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       bool hourg_gt_zero = hgcoef > Real_t(0.0);
       if (hourg_gt_zero || domain->myRank == 0)
       {
-        //TODO change back quantum to 0.001
+        //TODO change back quantum to 0.000143
         FTI_Protect_Kernel(&domain->snapshotCount, domain->myRank, 1, 0.000143,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
           domain->volo.raw()+offset, 
           domain->v.raw()+offset, 
