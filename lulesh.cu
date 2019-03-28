@@ -4222,18 +4222,18 @@ int main(int argc, char *argv[])
     // Allow MPI_Allreduce to overlap with computation on GPU
     //TimeIncrement(locDom) ;
 
-    //res = FTI_Snapshot();
+    res = FTI_Snapshot();
 
-    //if(res == FTI_DONE){
-    //  snapshotCount++;
-    //  fprintf(stdout, "%d: FTI: Checkpointing successful:%d\n", myRank, its);
-    //  fflush(stdout);
-    //}
+    if(res == FTI_DONE){
+      snapshotCount++;
+      //fprintf(stdout, "%d: FTI: Checkpointing successful:%d\n", myRank, its);
+      //fflush(stdout);
+    }
 
-    //if(res == FTI_NSCS){
-    //  fprintf(stderr, "%d: FTI: Failure in FTI_Checkpoint\n", myRank);
-    //  fflush(stderr);
-    //}
+    if(res == FTI_NSCS){
+      fprintf(stderr, "%d: FTI: Failure in FTI_Checkpoint\n", myRank);
+      fflush(stderr);
+    }
 
     //if(res == FTI_NREC){
     //  fprintf(stderr, "%d: FTI: Failure on recovery\n", myRank);
