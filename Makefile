@@ -1,5 +1,5 @@
 PROJECT = lulesh.out
-NVCC		= /cm/shared/apps/cuda90/toolkit/9.0.176/bin/nvcc
+NVCC		= nvcc #/cm/shared/apps/cuda90/toolkit/9.0.176/bin/nvcc
 FLAGS		= -arch=sm_35 
 DFLAGS	= -G -g -lineinfo
 RFLAGS 	= -O3 -DNDEBUG 
