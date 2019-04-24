@@ -2,9 +2,9 @@
 [basic]
 head                           = 0
 node_size                      = 2
-ckpt_dir                       = /home/mbaird/my_tmp/fti_dirs/ckpt
-glbl_dir                       = /home/mbaird/my_tmp/fti_dirs/glbl
-meta_dir                       = /home/mbaird/my_tmp/fti_dirs/meta
+ckpt_dir                       = /tmp
+glbl_dir                       = /tmp
+meta_dir                       = /tmp
 ckpt_l1                        = 4
 ckpt_l2                        = 30
 ckpt_l3                        = 40
@@ -21,7 +21,7 @@ verbosity                      = 2
 
 [restart]
 failure                        = 0
-exec_id                        = 2019-03-26_22-00-41
+exec_id                        = 2019-04-24_22-42-25
 
 
 [injection]

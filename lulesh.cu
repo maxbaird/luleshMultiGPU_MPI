@@ -4400,6 +4400,13 @@ int main(int argc, char *argv[])
 
   ProtectVariables(locDom, nx, &its);
 
+  int res = FTI_Snapshot();
+
+  if(res == FTI_NREC){
+    fprintf(stderr, "%d recovery failed\n", myRank);
+    fflush(stderr);
+  }
+
   while(locDom->time_h < locDom->stoptime)
   {
     // Time increment has been moved after computation of volume forces to 
