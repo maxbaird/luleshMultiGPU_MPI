@@ -2225,12 +2225,9 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     Index_t n_plane_cells = (domain->sizeX)*(domain->sizeY);
 
     // Launch kernel for bottom boundary in stream 1
-    if (planeMin || domain->myRank == 0)
+    //if (planeMin || domain->myRank == 0)
+    if (planeMin)
     {
-      //if(domain->myRank == 0){
-      //  fprintf(stdout, "Process zero gets in planeMin\n");
-      //  fflush(stdout);
-      //}
       int num_threads = n_plane_cells;
       int offset = 0;
       int align_offset = (offset % 32);
@@ -2239,35 +2236,12 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       int dimGrid = PAD_DIV(num_threads+align_offset,block_size);
 
       bool hourg_gt_zero = hgcoef > Real_t(0.0);
-      if (hourg_gt_zero || domain->myRank == 0)
+      //if (hourg_gt_zero || domain->myRank == 0)
+      if (hourg_gt_zero)
       {
         //TODO change back quantum to 0.000143
-        FTI_Protect_Kernel(&domain->snapshotCount, domain->myRank, 1, 0.005,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
-          domain->volo.raw()+offset, 
-          domain->v.raw()+offset, 
-          domain->p.raw()+offset, 
-          domain->q.raw()+offset,
-	        hgcoef, numElem, padded_numElem,
-          domain->nodelist.raw()+offset, 
-          domain->ss.raw()+offset, 
-          domain->elemMass.raw()+offset,
-          domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
-#ifdef DOUBLE_PRECISION
-          fx_elem->raw()+offset, 
-          fy_elem->raw()+offset, 
-          fz_elem->raw()+offset ,
-#else
-          domain->fx.raw(),
-          domain->fy.raw(),
-          domain->fz.raw(),
-#endif
-          domain->bad_vol_h+offset,
-          align_offset,
-          num_threads
-        );
-
-        //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
-        //( domain->volo.raw()+offset, 
+        //FTI_Protect_Kernel(&domain->snapshotCount, domain->myRank, 1, 0.005,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+        //  domain->volo.raw()+offset, 
         //  domain->v.raw()+offset, 
         //  domain->p.raw()+offset, 
         //  domain->q.raw()+offset,
@@ -2288,8 +2262,32 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         //  domain->bad_vol_h+offset,
         //  align_offset,
         //  num_threads
-        //  
         //);
+
+        CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
+        ( domain->volo.raw()+offset, 
+          domain->v.raw()+offset, 
+          domain->p.raw()+offset, 
+          domain->q.raw()+offset,
+	        hgcoef, numElem, padded_numElem,
+          domain->nodelist.raw()+offset, 
+          domain->ss.raw()+offset, 
+          domain->elemMass.raw()+offset,
+          domain->tex_x, domain->tex_y, domain->tex_z, domain->tex_xd, domain->tex_yd, domain->tex_zd,
+#ifdef DOUBLE_PRECISION
+          fx_elem->raw()+offset, 
+          fy_elem->raw()+offset, 
+          fz_elem->raw()+offset ,
+#else
+          domain->fx.raw(),
+          domain->fy.raw(),
+          domain->fz.raw(),
+#endif
+          domain->bad_vol_h+offset,
+          align_offset,
+          num_threads
+          
+        );
       }
       else
       {
