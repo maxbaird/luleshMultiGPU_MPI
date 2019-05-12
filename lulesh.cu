@@ -277,6 +277,8 @@ public:
   size_t snapshotCount;
   Index_t max_streams;
   std::vector<cudaStream_t> streams;
+  bool doOnce;
+  int gridSize;
 
   /* Elem-centered */
 
@@ -489,6 +491,8 @@ Domain *NewDomain(Index_t myRank, Index_t nx, Int_t totalRank)
   domain->snapshotCount = 0;
   domain->numRanks = totalRank;
   domain->myRank = myRank;
+  domain->doOnce = true;
+  domain->gridSize = 0;
 
   Index_t edgeElems = nx ;
   Index_t edgeNodes = edgeElems+1 ;
@@ -2448,10 +2452,22 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     bool hourg_gt_zero = hgcoef > Real_t(0.0);
     if (hourg_gt_zero)
     {
+      if(domain->doOnce){
+        fprintf(stdout, "rank %d got here\n", domain->myRank);
+        fflush(stdout);
+        domain->doOnce = false;
+        domain->gridSize = dimGrid;
+      }
+
+      if(domain->gridSize != dimGrid){
+        fprintf(stderr, "%d Grid sized changed to %d\n", domain->myRank, dimGrid);
+        fflush(stderr);
+        exit(EXIT_FAILURE);
+      }
       //fprintf(stdout, "Number of threads: %d\n", block_size * dimGrid);
       //fflush(stdout);
 
-        FTI_Protect_Kernel(&domain->snapshotCount, domain->myRank, 1, 0.005,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+        FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.005,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
       //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>(
        domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
