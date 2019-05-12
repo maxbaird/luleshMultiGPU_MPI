@@ -2448,8 +2448,12 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     bool hourg_gt_zero = hgcoef > Real_t(0.0);
     if (hourg_gt_zero)
     {
-      CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>
-      ( domain->volo.raw()+offset, 
+      //fprintf(stdout, "Number of threads: %d\n", block_size * dimGrid);
+      //fflush(stdout);
+
+        FTI_Protect_Kernel(&domain->snapshotCount, domain->myRank, 1, 0.005,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+      //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>(
+       domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
         domain->p.raw()+offset, 
         domain->q.raw()+offset,
