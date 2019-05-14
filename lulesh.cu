@@ -2507,7 +2507,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       }
 
 
-        FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.08,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+        FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.05,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
       //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>(
        domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
@@ -4496,6 +4496,11 @@ int main(int argc, char *argv[])
       printf("time = %e, dt=%e\n", double(locDom->time_h), double(locDom->deltatime_h) ) ;
     #endif
     its++;
+
+    //if(myRank == 0){
+    //  fprintf(stdout, "its: %d\n", its);
+    //  fflush(stdout);
+    //}
   }
 
   float elapsed_time;
