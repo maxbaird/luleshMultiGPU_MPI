@@ -280,6 +280,19 @@ public:
   bool doOnce;
   int gridSize;
 
+  /************************************************/
+  /* XXX Max: START DEBUGGING VARIABLES TO REMOVE */
+  /************************************************/
+  int db_offset;
+  double db_hgcoef;
+  int db_numElem;
+  int db_padded_numElem;
+  int db_align_offset;
+  int db_num_threads;
+  /************************************************/
+  /* XXX Max: END DEBUGGING VARIABLES TO REMOVE   */
+  /************************************************/
+
   /* Elem-centered */
 
   Vector_d<Index_t> matElemlist ; /* material indexset */
@@ -493,6 +506,20 @@ Domain *NewDomain(Index_t myRank, Index_t nx, Int_t totalRank)
   domain->myRank = myRank;
   domain->doOnce = true;
   domain->gridSize = 0;
+
+
+  /************************************************/
+  /* XXX Max: START DEBUGGING VARIABLES TO REMOVE */
+  /************************************************/
+  domain->db_offset=0;
+  domain->db_hgcoef=0.0;
+  domain->db_numElem=0;
+  domain->db_padded_numElem=0;
+  domain->db_align_offset=0;
+  domain->db_num_threads=0;
+  /************************************************/
+  /* XXX Max: END DEBUGGING VARIABLES TO REMOVE   */
+  /************************************************/
 
   Index_t edgeElems = nx ;
   Index_t edgeNodes = edgeElems+1 ;
@@ -2222,6 +2249,9 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     thrust::fill(domain->fy.begin(),domain->fy.end(),0.);
     thrust::fill(domain->fz.begin(),domain->fz.end(),0.);
 #endif
+    FTI_Protect(65, fx_elem->raw(), domain->padded_numElem*8, FTI_DBLE);
+    FTI_Protect(66, fy_elem->raw(), domain->padded_numElem*8, FTI_DBLE);
+    FTI_Protect(67, fz_elem->raw(), domain->padded_numElem*8, FTI_DBLE);
 
     bool planeMin = (domain->planeLoc != 0);
     bool planeMax = (domain->planeLoc != (domain->tp-1));
@@ -2452,20 +2482,30 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
     bool hourg_gt_zero = hgcoef > Real_t(0.0);
     if (hourg_gt_zero)
     {
+
+      //fprintf(stdout, "offset: %d\nhgcoef: %f\nnumElem:%dpadded_numElem: %d\nalign_offset:%d\nnum_threads:%d",
+      //    offset,hgcoef,numElem,padded_numElem,align_offset,num_threads);
+      //fflush(stdout);
+
       if(domain->doOnce){
-        fprintf(stdout, "rank %d got here\n", domain->myRank);
-        fflush(stdout);
+        domain->db_offset=offset;
+        domain->db_hgcoef=hgcoef;
+        domain->db_numElem=numElem;
+        domain->db_padded_numElem=padded_numElem;
+        domain->db_align_offset=align_offset;
+        domain->db_num_threads=num_threads;
         domain->doOnce = false;
-        domain->gridSize = dimGrid;
       }
 
-      if(domain->gridSize != dimGrid){
-        fprintf(stderr, "%d Grid sized changed to %d\n", domain->myRank, dimGrid);
-        fflush(stderr);
-        exit(EXIT_FAILURE);
+      if(domain->db_offset != offset || domain->db_numElem != numElem
+          || domain->db_padded_numElem != padded_numElem || domain->db_align_offset != align_offset
+          || domain->db_num_threads != num_threads){
+
+          fprintf(stderr, "Values changed!\n");
+          fflush(stderr);
+          exit(EXIT_FAILURE);
       }
-      //fprintf(stdout, "Number of threads: %d\n", block_size * dimGrid);
-      //fflush(stdout);
+
 
         FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.08,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
       //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>(
@@ -4094,6 +4134,17 @@ void LagrangeLeapFrog(Domain* domain)
    /* calculate element quantities (i.e. velocity gradient & q), and update
     * material states */
    LagrangeElements(domain);
+   //FTI_Protect(55, domain->vnew->raw(), domain->numElem, FTI_DBLE);
+   //int allElem = domain->numElem + 2*domain->sizeX*domain->sizeY;
+   //FTI_Protect(56, domain->delv_xi->raw(), allElem, FTI_DBLE);
+   //FTI_Protect(57, domain->delv_eta->raw(), allElem, FTI_DBLE);
+   //FTI_Protect(58, domain->delv_zeta->raw(), allElem, FTI_DBLE);
+   //FTI_Protect(59, domain->delx_xi->raw(), domain->numElem, FTI_DBLE);
+   //FTI_Protect(60, domain->delx_eta->raw(), domain->numElem, FTI_DBLE);
+   //FTI_Protect(61, domain->delx_zeta->raw(), domain->numElem, FTI_DBLE);
+   //FTI_Protect(62, domain->dxx->raw(), domain->numElem, FTI_DBLE);
+   //FTI_Protect(63, domain->dyy->raw(), domain->numElem, FTI_DBLE);
+   //FTI_Protect(64, domain->dzz->raw(), domain->numElem, FTI_DBLE);
 
    CalcTimeConstraintsForElems(domain);
 
@@ -4337,6 +4388,8 @@ void ProtectVariables(Domain *domain, Index_t nx, int *its){
   FTI_Protect(51, domain->nodeElemStart.raw(), domain->numNode, FTI_INTG);
   int cornerListSize = domain->nodeElemStart[domain->numNode-1]+domain->nodeElemCount[domain->numNode-1];
   FTI_Protect(52, domain->nodeElemCornerList.raw(), cornerListSize, FTI_INTG);
+  FTI_Protect(53, domain->lxip.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(54, domain->e.raw(), domain->numElem, FTI_INTG);
 }
 
 int main(int argc, char *argv[])
@@ -4418,12 +4471,15 @@ int main(int argc, char *argv[])
 
   ProtectVariables(locDom, nx, &its);
 
-  int res = FTI_Snapshot();
+  //int res = FTI_Snapshot();
 
-  if(res == FTI_NREC){
-    fprintf(stderr, "%d recovery failed\n", myRank);
-    fflush(stderr);
-  }
+  //if(res == FTI_NREC){
+  //  fprintf(stderr, "%d recovery failed\n", myRank);
+  //  fflush(stderr);
+  //}else{
+  //  fprintf(stdout, "Recovery successful from main\n");
+  //  fflush(stdout);
+  //}
 
   while(locDom->time_h < locDom->stoptime)
   {
