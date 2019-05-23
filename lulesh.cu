@@ -2509,7 +2509,7 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
 
       //fprintf(stdout, "Number of threads: %d\n", dimGrid * block_size);
       //fflush(stdout);
-      FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.001,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+      FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.5,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
       //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>(
        domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
@@ -2533,6 +2533,9 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
         align_offset,
         num_threads
       );
+      //fprintf(stdout, "%d snapshots = %zu\n", domain->myRank, domain->snapshotCount);
+      //fflush(stdout);
+      //domain->snapshotCount = 0;
     }
     else
     {
