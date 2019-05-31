@@ -5,7 +5,7 @@ node_size                      = 2
 ckpt_dir                       = /tmp
 glbl_dir                       = /tmp
 meta_dir                       = /tmp
-ckpt_l1                        = 4
+ckpt_l1                        = 500
 ckpt_l2                        = 500
 ckpt_l3                        = 500
 ckpt_l4                        = 500
@@ -21,7 +21,7 @@ verbosity                      = 2
 
 [restart]
 failure                        = 0
-exec_id                        = 2019-05-23_11-07-36
+exec_id                        = 2019-05-28_15-02-48
 
 
 [injection]
