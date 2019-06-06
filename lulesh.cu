@@ -2487,29 +2487,29 @@ void CalcVolumeForceForElems(const Real_t hgcoef,Domain *domain)
       //    offset,hgcoef,numElem,padded_numElem,align_offset,num_threads);
       //fflush(stdout);
 
-      if(domain->doOnce){
-        domain->db_offset=offset;
-        domain->db_hgcoef=hgcoef;
-        domain->db_numElem=numElem;
-        domain->db_padded_numElem=padded_numElem;
-        domain->db_align_offset=align_offset;
-        domain->db_num_threads=num_threads;
-        domain->doOnce = false;
-      }
+      //if(domain->doOnce){
+      //  domain->db_offset=offset;
+      //  domain->db_hgcoef=hgcoef;
+      //  domain->db_numElem=numElem;
+      //  domain->db_padded_numElem=padded_numElem;
+      //  domain->db_align_offset=align_offset;
+      //  domain->db_num_threads=num_threads;
+      //  domain->doOnce = false;
+      //}
 
-      if(domain->db_offset != offset || domain->db_numElem != numElem
-          || domain->db_padded_numElem != padded_numElem || domain->db_align_offset != align_offset
-          || domain->db_num_threads != num_threads){
+      //if(domain->db_offset != offset || domain->db_numElem != numElem
+      //    || domain->db_padded_numElem != padded_numElem || domain->db_align_offset != align_offset
+      //    || domain->db_num_threads != num_threads){
 
-          fprintf(stderr, "Values changed!\n");
-          fflush(stderr);
-          exit(EXIT_FAILURE);
-      }
+      //    fprintf(stderr, "Values changed!\n");
+      //    fflush(stderr);
+      //    exit(EXIT_FAILURE);
+      //}
 
 
       //fprintf(stdout, "Number of threads: %d\n", dimGrid * block_size);
       //fflush(stdout);
-      FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.5,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
+      FTI_Protect_Kernel(&domain->snapshotCount, 1, 0.005,(CalcVolumeForceForElems_kernel<true>), dimGrid,block_size,0,domain->streams[1],
       //CalcVolumeForceForElems_kernel<true> <<<dimGrid,block_size,0,domain->streams[1]>>>(
        domain->volo.raw()+offset, 
         domain->v.raw()+offset, 
@@ -4393,8 +4393,14 @@ void ProtectVariables(Domain *domain, Index_t nx, int *its){
   FTI_Protect(51, domain->nodeElemStart.raw(), domain->numNode, FTI_INTG);
   int cornerListSize = domain->nodeElemStart[domain->numNode-1]+domain->nodeElemCount[domain->numNode-1];
   FTI_Protect(52, domain->nodeElemCornerList.raw(), cornerListSize, FTI_INTG);
-  FTI_Protect(53, domain->lxip.raw(), domain->numElem, FTI_INTG);
   FTI_Protect(54, domain->e.raw(), domain->numElem, FTI_INTG);
+  FTI_Protect(68, domain->dtcourant_h, 1, FTI_DBLE);
+  FTI_Protect(69, domain->dthydro_h, 1, FTI_DBLE);
+  FTI_Protect(70, domain->bad_vol_h, 1, FTI_INTG);
+  FTI_Protect(71, domain->bad_q_h, 1, FTI_INTG);
+  FTI_Protect(72, &domain->cycle, 1, FTI_INTG);
+  FTI_Protect(73, &domain->deltatime_h, 1, FTI_DBLE);
+  FTI_Protect(74, &domain->time_h, 1, FTI_DBLE);
 }
 
 int main(int argc, char *argv[])
